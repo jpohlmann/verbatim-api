@@ -1,0 +1,20 @@
+{
+  "devDependencies": {
+    "@aws-sdk/types": "^3.577.0",
+    "serverless": "^3.2.0",
+    "serverless-offline": "^13.6.0",
+    "serverless-plugin-typescript": "^2.1.5",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@types/aws-lambda": "^8.10.138",
+    "@types/formidable": "^3.4.5",
+    "@types/node": "^20.13.0",
+    "aws": "^0.0.3-2",
+    "aws-sdk": "^2.1628.0",
+    "axios": "^1.7.2",
+    "env-var": "^7.5.0",
+    "formidable": "^3.5.1",
+    "parse-multipart": "^1.0.4"
+  }
+}

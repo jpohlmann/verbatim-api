@@ -1,0 +1,107 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: verbatimai
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: verbatimai
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: verbatimai
+plugins:
+  - serverless-offline
+  - serverless-plugin-typescript
+provider:
+  name: aws
+  runtime: nodejs20.x
+  apiGateway:
+    binaryMediaTypes:
+      - 'multipart/form-data'
+resources:
+  Resources:
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: verbatimai-upload
+        AccessControl: Private
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+    UploadRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: upload-policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:PutObjectAcl
+                  Resource:
+                    !Sub
+                      - "arn:aws:s3:::${BucketName}/*"
+                      - {BucketName: !Ref UploadBucket}
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    Fn::Sub:
+                      - arn:aws:logs:${Region}:${AccountId}:log-group:/aws/lambda/*:*:*
+                      - { Region: !Ref AWS::Region, AccountId: !Ref AWS::AccountId }
+functions:
+  upload:
+    role: UploadRole
+    environment:
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/upload.handler
+    events:
+      - httpApi:
+          path: /upload
+          method: post
+  patient:
+    environment:
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/patient.handler
+    events:
+      - httpApi:
+          path: /patient
+          method: get
+  appointment:
+    environment:
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/appointment.handler
+    events:
+      - httpApi:
+          path: /appointment
+          method: get
+  login:
+    environment:
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/login.handler
+    events:
+      - httpApi:
+          path: /auth
+          method: post
+  refresh:
+    environment:
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/login.refresh
+    events:
+      - httpApi:
+          path: /auth/refresh
+          method: post
