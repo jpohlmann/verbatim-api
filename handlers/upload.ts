@@ -19,6 +19,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   }
   try {
     const patient = await getPatient(patient_id, firm_id, authArray[1]);
+
     if (patient) {
       const url = await getSignedUrl(`${randomUUID()}.m4a`);
       return {

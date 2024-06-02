@@ -1,7 +1,6 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { getPatient } from '../services/patient';
 export const handler = async (event: APIGatewayProxyEvent) => {
-    console.log('event', event);
     if (!event.headers?.authorization) {
       return {
         statusCode: 400,
