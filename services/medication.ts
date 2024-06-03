@@ -1,38 +1,38 @@
 import { buildModMedRequest } from "../helpers/modmed";
 
 import axios, { AxiosRequestConfig } from 'axios';
-interface MedicationCoding {
+export type MedicationCoding = {
     system: string;
     code: string;
     display: string;
   }
   
-  interface MedicationCodeableConcept {
+  export type MedicationCodeableConcept = {
     coding: MedicationCoding[];
     text: string;
   }
   
-  interface Subject {
+  export type Subject = {
     reference: string;
     display: string;
   }
   
-  interface RouteCoding {
+  export type RouteCoding = {
     system: string;
     code: string;
     display: string;
   }
   
-  interface Route {
+  export type Route = {
     coding: RouteCoding[];
     text: string;
   }
   
-  interface Dosage {
+  export type Dosage = {
     route: Route;
   }
   
-  interface MedicationStatement {
+  export type MedicationStatement = {
     resourceType: string;
     status: string;
     medicationCodeableConcept: MedicationCodeableConcept;

@@ -21,7 +21,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const patient = await getPatient(patient_id, firm_id, authArray[1]);
 
     if (patient) {
-      const url = await getSignedUrl(`${randomUUID()}.m4a`);
+      const url = await getSignedUrl(`recordings/${randomUUID()}.m4a`);
       return {
         statusCode: 201,
         body: JSON.stringify(

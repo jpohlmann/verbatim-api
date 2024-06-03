@@ -1,46 +1,46 @@
 import { buildModMedRequest } from "../helpers/modmed";
 
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { ConditionalFormattingIconDisplayOption } from "aws-sdk/clients/quicksight";
-interface ClinicalStatusCoding {
+export type ClinicalStatusCoding = {
     system: string;
     code: string;
     display: string;
   }
   
-  interface ClinicalStatus {
+  export type ClinicalStatus = {
     coding: ClinicalStatusCoding[];
     text: string;
   }
   
-  interface CategoryCoding {
+  export type CategoryCoding = {
     system: string;
     code: string;
     display: string;
   }
   
-  interface Category {
+  export type Category = {
     coding: CategoryCoding[];
     text: string;
   }
   
-  interface CodeCoding {
+  export type CodeCoding = {
     system: string;
     code: string;
     display: string;
   }
   
-  interface Code {
+  export type Code = {
     coding: CodeCoding[];
     text: string;
   }
   
-  interface Subject {
+  export type Subject = {
     reference: string;
     display: string;
   }
   
-  interface Condition {
+  export type Condition = {
     resourceType: string;
     clinicalStatus: ClinicalStatus;
     category: Category[];
