@@ -2,6 +2,7 @@ import { getPatient } from '../services/patient';
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { getSignedUrl } from '../services/aws';
 import { randomUUID } from 'crypto';
+import { writeUuidToTable } from '../services/dynamo';
 export const handler = async (event: APIGatewayProxyEvent) => {
   if (!event.body || !event.headers?.authorization) {
     return {
@@ -21,7 +22,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const patient = await getPatient(patient_id, firm_id, authArray[1]);
 
     if (patient) {
-      const url = await getSignedUrl(`recordings/${randomUUID()}.m4a`);
+      const uuid = randomUUID();
+      console.log({uuid, firm_id, access: authArray[1]});
+      await writeUuidToTable(uuid, firm_id, authArray[1]);
+      const url = await getSignedUrl(`recordings/${uuid}.m4a`);
       return {
         statusCode: 201,
         body: JSON.stringify(
