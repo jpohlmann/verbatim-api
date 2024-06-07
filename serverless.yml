@@ -58,6 +58,7 @@ resources:
                   Action:
                     - s3:PutObject
                     - s3:PutObjectAcl
+                    - s3:GetObject
                   Resource:
                     !Sub
                       - "arn:aws:s3:::${BucketName}/*"
@@ -68,6 +69,7 @@ resources:
                     - "dynamodb:GetItem"
                     - "dynamodb:UpdateItem"
                     - "dynamodb:DeleteItem"
+                    - "dynamodb:Query"
                   Resource:
                     Fn::Sub:
                       - "arn:aws:dynamodb:${Region}:${AccountId}:table/verbatim-ai"
@@ -93,6 +95,28 @@ functions:
       - httpApi:
           path: /upload
           method: post
+  notes:
+    role: UploadRole
+    environment:
+      DYNAMODB_TABLE_NAME: verbatim-ai
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/notes.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.s3
+            detail-type:
+              - Object Created
+            detail:
+              bucket:
+                name:
+                  - verbatimai-upload
+              object:
+                key:
+                  - prefix: 'transcriptions/'
+
   patient:
     environment:
       DOMAIN_URL: stage.ema-api.com

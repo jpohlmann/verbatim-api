@@ -50,12 +50,12 @@ export type ClinicalStatusCoding = {
     recordedDate: string;
   }
 export const createCondition = async (
-    condition: ConditionalFormattingIconDisplayOption,
+    condition: Condition,
     firmId: string, 
     accessToken: string
 ): Promise<Condition> => {
     const result = await axios.request({
-        ...buildModMedRequest(`/MedicationStatement`, 'POST', firmId, accessToken),
+        ...buildModMedRequest(`/Condition`, 'POST', firmId, accessToken),
         data: condition
     }
     );

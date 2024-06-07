@@ -24,7 +24,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     if (patient) {
       const uuid = randomUUID();
       console.log({uuid, firm_id, access: authArray[1]});
-      await writeUuidToTable(uuid, firm_id, authArray[1]);
+      await writeUuidToTable(uuid, firm_id, authArray[1], patient_id);
       const url = await getSignedUrl(`recordings/${uuid}.m4a`);
       return {
         statusCode: 201,

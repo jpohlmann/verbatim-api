@@ -7,6 +7,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.590.0",
     "@types/aws-lambda": "^8.10.138",
     "@types/formidable": "^3.4.5",
     "@types/node": "^20.13.0",

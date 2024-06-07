@@ -40,11 +40,11 @@ export const buildModMedRequest = (
     };
 };
 
-export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Condition|boolean => {
+export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Array<Condition> => {
     if (!notes['ICD Code']) {
-        return false;
+        return [];
     }
-    return {
+    return [{
         "resourceType": "Condition",
         "clinicalStatus": {
           "coding": [
@@ -85,11 +85,11 @@ export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: 
         // TODO: Need to figure out onset date
         "onsetDateTime": "2024-02-14T10:21:14+00:00",
         "recordedDate": "2024-02-14T15:21:14+00:00"
-      }
+      }];
 } 
-export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Array<MedicationStatement>|boolean => {
+export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Array<MedicationStatement> => {
     if (!notes['New Rx Generation'] || notes['New Rx Generation'].length == 0) {
-        return false;
+        return [];
     }
     const medicationStatements: Array<MedicationStatement> = [];
     notes['New Rx Generation'].forEach(prescription => {
@@ -127,4 +127,13 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
             ]
           });
     })
+}
+export const extractUUID = (inputString: string): string|null => {
+  const pattern = /transcriptions\/([a-f\d-]+)\.json/;
+  const match = inputString.match(pattern);
+  if (match && match.length > 1) {
+    return match[1];
+  } else {
+    return null;
+  }
 }
