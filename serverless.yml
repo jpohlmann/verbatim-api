@@ -116,7 +116,27 @@ functions:
               object:
                 key:
                   - prefix: 'transcriptions/'
-
+  recordings:
+    role: UploadRole
+    environment:
+      DYNAMODB_TABLE_NAME: verbatim-ai
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/recordings.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.s3
+            detail-type:
+              - Object Created
+            detail:
+              bucket:
+                name:
+                  - verbatimai-upload
+              object:
+                key:
+                  - prefix: 'recordings/'
   patient:
     environment:
       DOMAIN_URL: stage.ema-api.com

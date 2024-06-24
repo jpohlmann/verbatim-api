@@ -31,23 +31,25 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
             body: JSON.stringify({ message: 'Could not find record' })
           };      
     }
+    console.log('FILE CONTENTS', fileContents);
+    console.log('uuid obj', uuidObj);
     const medications = getMedicationFromStructuredNotes(
-        fileContents, 
-        uuidObj.firm_id, 
-        parseInt(uuidObj.patient_id)
+        fileContents['Structured Notes'], 
+        uuidObj.firm_id.S, 
+        parseInt(uuidObj.patient_id.S)
     );
     const conditions = getConditionFromStructuredNotes(
-        fileContents, 
-        uuidObj.firm_id, 
-        parseInt(uuidObj.patient_id)
+        fileContents['Structured Notes'], 
+        uuidObj.firm_id.S, 
+        parseInt(uuidObj.patient_id.S)
     );
     for (let x = 0; x < medications.length; x++) {
         console.log('creating medication', medications[x]);
-        await createMedication(medications[x], uuidObj.firm_id, uuidObj.access_token);
+        await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
     }
     for (let x = 0; x < conditions.length; x++) {
         console.log('creating conditions', conditions[x]);
-        await createCondition(conditions[x], uuidObj.firm_id, uuidObj.access_token);
+        await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
     }
     return {
         statusCode: 200,

@@ -2,11 +2,11 @@ import { DynamoDB } from 'aws-sdk';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 
 export type DBNotesItem = {
-    id: string;
-    access_token: string;
-    firm_id: string;
-    patient_id: string;
-};
+    firm_id: { S: string };
+    id: { S: string };
+    access_token: { S: string };
+    patient_id: { S: string };
+  };
 export const writeUuidToTable = async (uuid: string, firmId: string, accessToken: string, patientId: string): Promise<void> => {
     const client = new DynamoDB({ region: "us-east-1" });
     var params = {

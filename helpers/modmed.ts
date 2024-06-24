@@ -126,7 +126,8 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
               }
             ]
           });
-    })
+    });
+    return medicationStatements;
 }
 export const extractUUID = (inputString: string): string|null => {
   const pattern = /transcriptions\/([a-f\d-]+)\.json/;
