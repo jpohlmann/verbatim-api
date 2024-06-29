@@ -15,6 +15,19 @@ provider:
       - 'multipart/form-data'
 resources:
   Resources:
+    VerbatimAIDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: verbatim-ai
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
     UploadBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -45,10 +58,22 @@ resources:
                   Action:
                     - s3:PutObject
                     - s3:PutObjectAcl
+                    - s3:GetObject
                   Resource:
                     !Sub
                       - "arn:aws:s3:::${BucketName}/*"
                       - {BucketName: !Ref UploadBucket}
+                - Effect: "Allow"
+                  Action:
+                    - "dynamodb:PutItem"
+                    - "dynamodb:GetItem"
+                    - "dynamodb:UpdateItem"
+                    - "dynamodb:DeleteItem"
+                    - "dynamodb:Query"
+                  Resource:
+                    Fn::Sub:
+                      - "arn:aws:dynamodb:${Region}:${AccountId}:table/verbatim-ai"
+                      - { Region: !Ref AWS::Region, AccountId: !Ref AWS::AccountId }
                 - Effect: Allow
                   Action:
                     - logs:CreateLogGroup
@@ -62,6 +87,7 @@ functions:
   upload:
     role: UploadRole
     environment:
+      DYNAMODB_TABLE_NAME: verbatim-ai
       DOMAIN_URL: stage.ema-api.com
       X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
     handler: handlers/upload.handler
@@ -69,6 +95,56 @@ functions:
       - httpApi:
           path: /upload
           method: post
+  notes:
+    role: UploadRole
+    environment:
+      DYNAMODB_TABLE_NAME: verbatim-ai
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/notes.handler
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.s3
+            detail-type:
+              - Object Created
+            detail:
+              bucket:
+                name:
+                  - verbatimai-upload
+              object:
+                key:
+                  - prefix: 'transcriptions/'
+  recordings:
+    role: UploadRole
+    environment:
+      DYNAMODB_TABLE_NAME: verbatim-ai
+      DOMAIN_URL: stage.ema-api.com
+      X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
+    handler: handlers/recordings.handler
+    timeout: 30
+    vpc:
+      securityGroupIds:
+        - sg-0064e90eb380936e6
+      subnetIds:
+        - subnet-00a9c6d22e9e28071
+        - subnet-09df15be9d7b91004
+        - subnet-00ab1f03ac71beebb
+    events:
+      - eventBridge:
+          pattern:
+            source:
+              - aws.s3
+            detail-type:
+              - Object Created
+            detail:
+              bucket:
+                name:
+                  - verbatimai-upload
+              object:
+                key:
+                  - prefix: 'recordings/'
   patient:
     environment:
       DOMAIN_URL: stage.ema-api.com
