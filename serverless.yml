@@ -123,6 +123,14 @@ functions:
       DOMAIN_URL: stage.ema-api.com
       X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
     handler: handlers/recordings.handler
+    timeout: 30
+    vpc:
+      securityGroupIds:
+        - sg-0064e90eb380936e6
+      subnetIds:
+        - subnet-00a9c6d22e9e28071
+        - subnet-09df15be9d7b91004
+        - subnet-00ab1f03ac71beebb
     events:
       - eventBridge:
           pattern:

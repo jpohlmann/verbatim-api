@@ -93,6 +93,10 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
     }
     const medicationStatements: Array<MedicationStatement> = [];
     notes['New Rx Generation'].forEach(prescription => {
+        if (prescription['RxNorm Code'] == 'Not found') {
+          console.log('Medication not found: ' + prescription['Medication Name']);
+          return;
+        }
         medicationStatements.push({
             "resourceType": "MedicationStatement",
             "status": "active",
@@ -129,8 +133,12 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
     });
     return medicationStatements;
 }
-export const extractUUID = (inputString: string): string|null => {
-  const pattern = /transcriptions\/([a-f\d-]+)\.json/;
+export const extractUUID = (inputString: string, fileType = 'json'): string|null => {
+  let pattern = /transcriptions\/([a-f\d-]+)\.json/;
+  // Too lazy to figure out how to concat into a regex currently.
+  if (fileType == 'm4a') {
+    pattern = /recordings\/([a-f\d-]+)\.m4a/;
+  }
   const match = inputString.match(pattern);
   if (match && match.length > 1) {
     return match[1];

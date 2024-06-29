@@ -1,6 +1,6 @@
 import { S3ObjectCreatedNotificationEvent, S3Handler } from 'aws-lambda';
 import { S3 } from 'aws-sdk';
-import { extractUUID, getConditionFromStructuredNotes, getMedicationFromStructuredNotes, StructuredNotes } from '../helpers/modmed';
+import { extractUUID } from '../helpers/modmed';
 import axios from 'axios';
 const s3 = new S3();
 
@@ -10,7 +10,7 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
     // Extract key from the event
     const objectKey = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
 
-    const uuid = extractUUID(event.detail.object.key);
+    const uuid = extractUUID(event.detail.object.key, 'm4a');
 
     const result = await axios.post('http://172.31.65.247/transcribe', {
       audio_file_path: objectKey,
