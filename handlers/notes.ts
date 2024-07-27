@@ -46,12 +46,16 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
         parseInt(uuidObj.patient_id.S)
     );
     for (let x = 0; x < medications.length; x++) {
-      await postMessageToSlackChannel('Medication to Create', medications[x]);
+      if (process.env.PRODUCTION_MODE !== 'true') {
+        await postMessageToSlackChannel('Medication to Create', medications[x]);
+      }
       console.log('creating medication', JSON.stringify(medications[x]));
       await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
     }
     for (let x = 0; x < conditions.length; x++) {
-      await postMessageToSlackChannel('Creating Conditions', conditions[x]);
+      if (process.env.PRODUCTION_MODE !== 'true') { 
+        await postMessageToSlackChannel('Creating Conditions', conditions[x]);
+      }
       console.log('creating conditions', JSON.stringify(conditions[x]));
       await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
     }
