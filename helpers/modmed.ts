@@ -44,7 +44,9 @@ export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: 
     if (!notes['ICD Code']) {
         return [];
     }
-    return [{
+    const icdCodeArray = notes['ICD Code'].split(',');
+    const diagnosisArray = notes['Diagnosis'].split(',');
+    return icdCodeArray.map((code, index) => { return {
         "resourceType": "Condition",
         "clinicalStatus": {
           "coding": [
@@ -72,11 +74,11 @@ export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: 
           "coding": [
             {
               "system": "ICD10",
-              "code": notes['ICD Code'],
-              "display": notes['Diagnosis']
+              "code": code,
+              "display": diagnosisArray[index]
             }
           ],
-          "text": notes['Diagnosis']
+          "text": diagnosisArray[index]
         },
         "subject": {
           "reference": `https://${env.get('DOMAIN_URL').asString()}/ema-dev/firm/${firmId}/ema/fhir/v2/Patient/${patientId}`,
@@ -85,7 +87,7 @@ export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: 
         // TODO: Need to figure out onset date
         "onsetDateTime": "2024-02-14T10:21:14+00:00",
         "recordedDate": "2024-02-14T15:21:14+00:00"
-      }];
+      }});
 } 
 export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Array<MedicationStatement> => {
     if (!notes['New Rx Generation'] || notes['New Rx Generation'].length == 0) {

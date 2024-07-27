@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { login, refresh } from '../services/auth';
+import { postMessageToSlackChannel } from '../services/slack';
 export const handler = async (event: APIGatewayProxyEvent) => {
   if (!event.body) {
     return {

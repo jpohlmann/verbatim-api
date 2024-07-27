@@ -1,9 +1,11 @@
 import { S3ObjectCreatedNotificationEvent, S3Handler } from 'aws-lambda';
 import { S3 } from 'aws-sdk';
 import { extractUUID, getConditionFromStructuredNotes, getMedicationFromStructuredNotes, StructuredNotes } from '../helpers/modmed';
+import { deleteAssets } from '../services/aws';
 import { createCondition } from '../services/condition';
-import { getDataByUuid } from '../services/dynamo';
+import { deleteDataByUuid, getDataByUuid } from '../services/dynamo';
 import { createMedication } from '../services/medication';
+import { postMessageToSlackChannel } from '../services/slack';
 
 const s3 = new S3();
 
@@ -31,7 +33,8 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
             body: JSON.stringify({ message: 'Could not find record' })
           };      
     }
-    console.log('FILE CONTENTS', JSON.stringify(fileContents));
+    console.log('Transcribed File Data', JSON.stringify(fileContents));
+    await postMessageToSlackChannel('Transcribed File Data', fileContents);
     const medications = getMedicationFromStructuredNotes(
         fileContents['Structured Notes'], 
         uuidObj.firm_id.S, 
@@ -43,12 +46,19 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
         parseInt(uuidObj.patient_id.S)
     );
     for (let x = 0; x < medications.length; x++) {
-        console.log('creating medication', JSON.stringify(medications[x]));
-        await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      await postMessageToSlackChannel('Medication to Create', medications[x]);
+      console.log('creating medication', JSON.stringify(medications[x]));
+      await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
     }
     for (let x = 0; x < conditions.length; x++) {
-        console.log('creating conditions', JSON.stringify(conditions[x]));
-        await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      await postMessageToSlackChannel('Creating Conditions', conditions[x]);
+      console.log('creating conditions', JSON.stringify(conditions[x]));
+      await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+    }
+    // If production, clear out assets after inserting into modmed
+    if (process.env.PRODUCTION_MODE === 'true') {
+      await deleteAssets(uuid);
+      await deleteDataByUuid(uuid);
     }
     return {
         statusCode: 200,

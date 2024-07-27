@@ -2,6 +2,7 @@ import { buildModMedRequest } from "../helpers/modmed";
 
 import axios from 'axios';
 import { ConditionalFormattingIconDisplayOption } from "aws-sdk/clients/quicksight";
+import { postMessageToSlackChannel } from "./slack";
 export type ClinicalStatusCoding = {
     system: string;
     code: string;
@@ -56,9 +57,13 @@ export const createCondition = async (
 ): Promise<Condition> => {
     const result = await axios.request({
         ...buildModMedRequest(`/Condition`, 'POST', firmId, accessToken),
-        data: condition
+        data: condition,
+        validateStatus: (status) => {
+          return status < 500;
+        }
     }
     );
+    await postMessageToSlackChannel('Modmed response for condition', {data: result.data } );
     console.log(result.data);
     return result.data;
 }

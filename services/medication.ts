@@ -1,6 +1,7 @@
 import { buildModMedRequest } from "../helpers/modmed";
 
 import axios, { AxiosRequestConfig } from 'axios';
+import { postMessageToSlackChannel } from "./slack";
 export type MedicationCoding = {
     system: string;
     code: string;
@@ -46,9 +47,13 @@ export const createMedication = async (
 ): Promise<MedicationStatement> => {
     const result = await axios.request({
         ...buildModMedRequest(`/MedicationStatement`, 'POST', firmId, accessToken),
-        data: medicationStatement
+        data: medicationStatement,
+        validateStatus: (status) => {
+          return status < 500;
+        }
     }
     );
+    await postMessageToSlackChannel('Modmed response for medication', {data: result.data } );
     console.log(result.data);
     return result.data;
 }
