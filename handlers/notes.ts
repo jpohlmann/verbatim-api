@@ -50,14 +50,22 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
         await postMessageToSlackChannel('Medication to Create', medications[x]);
       }
       console.log('creating medication', JSON.stringify(medications[x]));
-      await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      try {
+        await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      } catch (e) {
+        await postMessageToSlackChannel('Modmed 500 error for medication', {name: medications[x].medicationCodeableConcept.text});
+      }
     }
     for (let x = 0; x < conditions.length; x++) {
       if (process.env.PRODUCTION_MODE !== 'true') { 
         await postMessageToSlackChannel('Creating Conditions', conditions[x]);
       }
       console.log('creating conditions', JSON.stringify(conditions[x]));
-      await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      try {
+        await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+      } catch (e) {
+        await postMessageToSlackChannel('Modmed 500 error for condition', {name: conditions[x].code});
+      }
     }
     // If production, clear out assets after inserting into modmed
     if (process.env.PRODUCTION_MODE === 'true') {

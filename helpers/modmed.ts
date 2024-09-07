@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig } from 'axios';
 import * as env from 'env-var';
 import { Condition } from '../services/condition';
 import { MedicationStatement } from '../services/medication';
+import { ROUTES_OF_ADMINISTRATION } from './constants';
 export type StructuredNotes = {
     "Diagnosis": string;
     "ICD Code": string;
@@ -21,6 +22,7 @@ export type RxGeneration = {
     "Medication Name": string;
     "Dosage": string;
     "RxNorm Code": string;
+    "Route of Administration Code": string;
   };
 
 export const buildModMedRequest = (
@@ -118,16 +120,15 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
             },
             "dosage": [
               {
-                //TODO: Need to figure out route of administration.
                 "route": {
                   "coding": [
                     {
                       "system": "FDARouteOfAdministration",
-                      "code": "C38304",
-                      "display": "topical"
+                      "code": prescription['Route of Administration Code'],
+                      "display": ROUTES_OF_ADMINISTRATION[prescription['Route of Administration Code']]
                     }
                   ],
-                  "text": "topical"
+                  "text": ROUTES_OF_ADMINISTRATION[prescription['Route of Administration Code']]
                 }
               }
             ]
