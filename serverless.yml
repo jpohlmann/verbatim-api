@@ -123,7 +123,7 @@ functions:
       DOMAIN_URL: stage.ema-api.com
       X_API_KEY: a893daf8-b77e-4385-9918-11258dc912a6
     handler: handlers/recordings.handler
-    timeout: 30
+    timeout: 300
     vpc:
       securityGroupIds:
         - sg-0064e90eb380936e6
