@@ -1,8 +1,36 @@
 import { AuthCookies, DiagnosisRequest, DiagnosisResponse} from '../types/modmed-ui';
 import axios from 'axios';
+import { Condition } from './condition';
+import Fuse from 'fuse.js';
+import qs from 'qs';
 
-const qs = require('qs');
-
+export const PRESCRIPTION_PLAN = {
+  "name": "Prescription Medication Management",
+  "id": 10379,
+  "labelColor": "pink",
+  "labelText": "regimen",
+  "labelVisible": true,
+  "pathologyReq": false,
+  "procedureAlias": "RxTreatmentRegimen",
+  "requiresBodyLocation": false
+};
+type Diagnosis = {
+  diagnosisName: string;
+  labelOffsetY: number;
+  uncertainDiagnosisName: string;
+  labelOffsetX: number;
+  labelText: string;
+  problemAddressedDisplay: {
+    label: string;
+    value: string;
+  };
+  requiresBodyLocation: boolean;
+  id: number;
+  icd10Match: string;
+  diagnosisLabel: string;
+  icd9: string;
+  icd10: string;
+};
 const getSessionCookies = async (): Promise<any> => {
     const response = await axios({
         method: 'get',
@@ -39,8 +67,8 @@ export const login = async (username: string, password: string, providerUrl: str
             },
             data: qs.stringify({
               targetUrl: '',
-              username: 'dcane',
-              password: 'Password1234',
+              username,
+              password,
               login: ''
             }),
             withCredentials: true
@@ -87,7 +115,45 @@ export const sendDiagnosisRequest = async (providerUrl: string, authCookies: Aut
         console.error('Error making request:', error);
     }
 }
+export const findDiagnosisByICDCode = async (condition: Condition, visitId: number, providerUrl: string, authCookies: AuthCookies): Promise<Diagnosis> => {
+  try {
+    const response = await axios({
+        method: 'get',
+        url: `${providerUrl}/ema/ws/v3/diagnosis/ema/dx?selector=id,diagnosisLabel,diagnosisName,icd10Match,icd9,icd10,problemAddressedDisplay,requiresBodyLocation,switchDiagramChild,switchDiagramFemale,switchDiagramMale&visitId=${visitId}&searchTerm=${condition.code.coding[0].code.trim()}&paging.pageNumber=1&paging.pageSize=50`,
+        headers: {
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'Content-Type': 'application/json',
+          'Origin': providerUrl,
+          'Pragma': 'no-cache',
+          'Referer': `${providerUrl}/ema/web/practice/staff`,
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-origin',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          'sec-ch-ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"macOS"',
+          'Cookie': `CSID=${authCookies.csid}; JSESSIONID=${authCookies.jsessionid}; gdpr=${authCookies.gdpr}`
+        }
+      });
+      if (!response.data.length) {
+        return null;
+      }
+      const fuse = new Fuse(response.data as Diagnosis[], { keys: ['diagnosisName', 'diagnosisLabel'] });
+      const results = fuse.search(condition.code.text);
+      if (results.length == 0) {
+        // If we didn't get a good match, just pick the first
+        return response.data[0];
+      }
+      return results[0].item;
+} catch (error) {
+    console.error('Error making request:', error);
+}
 
+}
 // Extract cookies from the response headers
 const parseCookiesFromHeaders = (headers) => {
     const setCookieHeader = headers['set-cookie'];
@@ -100,4 +166,27 @@ const parseCookiesFromHeaders = (headers) => {
         });
     }
     return cookies;
+}
+export const createDiagnosisFromCondition = async (condition: Condition, visitId: number, providerUrl: string, loginCookies: AuthCookies, hasMedication: boolean): Promise<DiagnosisResponse> => {
+  const diagnosisResult = await findDiagnosisByICDCode(condition, visitId, providerUrl, loginCookies);
+  let procedures = [];
+  if (hasMedication) {
+    procedures.push(
+      {
+        procedure: 'Prescription',
+        veProcedure: PRESCRIPTION_PLAN,
+        procedureBodyLocations: []
+      }
+    );
+  }
+  const diagnosisRequest: DiagnosisRequest = {
+    visit: {
+      id: visitId
+    },
+    diagnosisName: diagnosisResult.diagnosisName,
+    diagnosis: diagnosisResult,
+    diagnosisBodyLocations: [],
+    procedures
+  };
+  return await sendDiagnosisRequest(providerUrl, loginCookies, diagnosisRequest);
 }

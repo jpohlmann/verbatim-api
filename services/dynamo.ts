@@ -1,13 +1,18 @@
 import { DynamoDB } from 'aws-sdk';
 import { DynamoDBClient, QueryCommand, DeleteItemCommand } from '@aws-sdk/client-dynamodb';
+import { AuthCookies } from '../types/modmed-ui';
 
 export type DBNotesItem = {
     firm_id: { S: string };
     id: { S: string };
     access_token: { S: string };
     patient_id: { S: string };
+    appointment_id: { S: string };
+    gdpr: {S: string};
+    jsessionid: {S: string};
+    csid: {S: string};
   };
-export const writeUuidToTable = async (uuid: string, firmId: string, accessToken: string, patientId: string): Promise<void> => {
+export const writeUuidToTable = async (uuid: string, firmId: string, accessToken: string, patientId: string, appointmentId: string, authCookies: AuthCookies): Promise<void> => {
     const client = new DynamoDB({ region: "us-east-1" });
     var params = {
         TableName: process.env.DYNAMODB_TABLE_NAME,  
@@ -15,7 +20,11 @@ export const writeUuidToTable = async (uuid: string, firmId: string, accessToken
           id: {S: uuid},
           access_token: {S: accessToken},
           firm_id: {S: firmId},
-          patient_id: {S: patientId}
+          patient_id: {S: patientId},
+          appointment_id: {S: appointmentId},
+          gdpr: {S: authCookies.gdpr},
+          jsessionid: {S: authCookies.jsessionid},
+          csid: {S: authCookies.csid}
         },
       };
     await client.putItem(params).promise();

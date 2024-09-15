@@ -1,6 +1,17 @@
 import { APIGatewayProxyEvent } from 'aws-lambda';
-import { login, refresh } from '../services/auth';
-import { postMessageToSlackChannel } from '../services/slack';
+import { login, LoginResponse, refresh } from '../services/auth';
+import { AuthCookies } from '../types/modmed-ui';
+import { login as sessionLogin } from '../services/modmed-form';
+
+// TODO: need to figure out how the api user/password work from modmed.
+// Possibly make this dynamic per practice?
+const API_USER = 'fhir_VNxPW';
+const API_PASSWORD = 'cfbAf5Vb0D';
+
+type CredentialResponse = {
+  apiLogin: LoginResponse;
+  sessionLogin: AuthCookies;
+}
 export const handler = async (event: APIGatewayProxyEvent) => {
   if (!event.body) {
     return {
@@ -16,13 +27,20 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     }
   }
   try {
-    const credentials = await login(firm_id, username, password);
-    if (credentials) {
+    const credentials = await login(firm_id, API_USER, API_PASSWORD);
+    const sessionCookies = await sessionLogin(
+      username, 
+      password, 
+      `https://${firm_id}.m2integrationtest.com/ema/provider-login`
+    );
+    if (credentials && sessionCookies) {
+      const combinedCredentials: CredentialResponse = {
+        apiLogin: credentials,
+        sessionLogin: sessionCookies
+      };
       return {
         statusCode: 201,
-        body: JSON.stringify(
-          credentials
-        ),
+        body: JSON.stringify(combinedCredentials),
       };
     }
   } catch (e) {

@@ -4,7 +4,9 @@ import { extractUUID, getConditionFromStructuredNotes, getMedicationFromStructur
 import { deleteAssets } from '../services/aws';
 import { createCondition } from '../services/condition';
 import { deleteDataByUuid, getDataByUuid } from '../services/dynamo';
+import { getEncounterForAppointment } from '../services/encounter';
 import { createMedication } from '../services/medication';
+import { createDiagnosisFromCondition } from '../services/modmed-form';
 import { postMessageToSlackChannel } from '../services/slack';
 
 const s3 = new S3();
@@ -57,12 +59,21 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
       }
     }
     for (let x = 0; x < conditions.length; x++) {
+      
       if (process.env.PRODUCTION_MODE !== 'true') { 
         await postMessageToSlackChannel('Creating Conditions', conditions[x]);
       }
       console.log('creating conditions', JSON.stringify(conditions[x]));
       try {
-        await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
+        const encounter = await getEncounterForAppointment(parseInt(uuidObj.appointment_id.S), uuidObj.firm_id.S, uuidObj.access_token.S);
+        await createDiagnosisFromCondition(
+          conditions[x], 
+          parseInt(encounter.id), 
+          `https://${uuidObj.firm_id.S}.m2integrationtest.com`, 
+          {gdpr: uuidObj.gdpr.S, jsessionid: uuidObj.jsessionid.S, csid: uuidObj.csid.S}, 
+          medications.length > 0
+        );
+        //await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
       } catch (e) {
         await postMessageToSlackChannel('Modmed 500 error for condition', {name: conditions[x].code});
       }
