@@ -2,7 +2,10 @@ import axios, { AxiosRequestConfig } from 'axios';
 import * as env from 'env-var';
 import { Condition } from '../services/condition';
 import { MedicationStatement } from '../services/medication';
-import { ROUTES_OF_ADMINISTRATION } from './constants';
+import { ROUTES_OF_ADMINISTRATION } from './constants/route-of-administration';
+import Fuse from 'fuse.js';
+import { FollowUpData, ProcedureData, ProcedureModalResponse, VisitProcedure } from '../types/modmed-ui';
+
 export type StructuredNotes = {
     "Diagnosis": string;
     "ICD Code": string;
@@ -16,6 +19,7 @@ export type StructuredNotes = {
     "Current Treatments": string;
     "New Rx Generation": RxGeneration[];
     "Follow-up": string;
+    "CC_HPI": string;
   };
   
 export type RxGeneration = {
@@ -148,4 +152,68 @@ export const extractUUID = (inputString: string, fileType = 'json'): string|null
   } else {
     return null;
   }
+}
+
+export const findCounselingMedicationInProcedureModal = (
+  medicationName: string, 
+  visitDiagnosisResponse: ProcedureModalResponse,
+  procedureNoteId: number
+): VisitProcedure|boolean => {
+  for (const option of visitDiagnosisResponse.veProcedureFacade.metadata) {
+    if (option.type !== 'cbtextarea') {
+      continue;
+    }
+    const fuse = new Fuse(option.options, {includeScore: true, threshold: 0.4, keys: ['optionValue']});
+    const results = fuse.search(medicationName);
+    if (results.length > 0) {
+      const visitProcedure: VisitProcedure = {
+        id: procedureNoteId,
+        veVisitProcedureMetadataResponse: [
+          {
+            id: option.veVisitProcedureMetadataResponseId,
+            veProcedureMetadata: {
+              id: option.id
+            },
+            veVisitProcedureMetadataOptionResponses: [
+              {
+                veProcedureMetadataOption: {
+                  id: results[0].item.id
+                },
+                textareaValue: results[0].item?.textAreaValue
+              }
+            ]
+          }
+        ],
+        visitProcedureAlerts: []
+      };
+      return visitProcedure;
+    }
+  }
+  return false;
+} 
+export const getCounselingProcedure = (followupData: FollowUpData, diagnosis: string): ProcedureData => {
+  const result = followupData.suggestedProcedures.filter(procedure => 
+    procedure.labelText == 'counseling' 
+      && procedure.procedureName.startsWith('Counseling -')
+    );
+  return {
+    procedure: result[0].label,
+    veProcedure: {
+      ...result[0],
+      name: result[0].label
+    },
+    procedureBodyLocations: []
+  };
+}
+
+export const getMedicationCounselingProcedure = (followupData: FollowUpData): ProcedureData => {
+  const result = followupData.suggestedProcedures.find(procedure => procedure.procedureAlias == 'MedicationCounseling');
+  return {
+    procedure: result.label,
+    veProcedure: {
+      ...result,
+      name: result.label
+    },
+    procedureBodyLocations: []
+  };
 }

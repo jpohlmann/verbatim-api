@@ -1,6 +1,8 @@
 {
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "deploy": "serverless deploy",
+    "offline": "serverless offline"
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.577.0",

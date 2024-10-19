@@ -6,7 +6,7 @@ import { createCondition } from '../services/condition';
 import { deleteDataByUuid, getDataByUuid } from '../services/dynamo';
 import { getEncounterForAppointment } from '../services/encounter';
 import { createMedication } from '../services/medication';
-import { createDiagnosisFromCondition } from '../services/modmed-form';
+import { addAdditionalComments, AdditionalComments, createDiagnosisFromCondition } from '../services/modmed-form';
 import { postMessageToSlackChannel } from '../services/slack';
 
 const s3 = new S3();
@@ -47,6 +47,8 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
         uuidObj.firm_id.S, 
         parseInt(uuidObj.patient_id.S)
     );
+    // Skipping Medications for now, not helpful unless we can tie to the visit.
+    /*
     for (let x = 0; x < medications.length; x++) {
       if (process.env.PRODUCTION_MODE !== 'true') {
         await postMessageToSlackChannel('Medication to Create', medications[x]);
@@ -58,6 +60,8 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
         await postMessageToSlackChannel('Modmed 500 error for medication', {name: medications[x].medicationCodeableConcept.text});
       }
     }
+    */
+    const encounter = await getEncounterForAppointment(parseInt(uuidObj.appointment_id.S), uuidObj.firm_id.S, uuidObj.access_token.S);
     for (let x = 0; x < conditions.length; x++) {
       
       if (process.env.PRODUCTION_MODE !== 'true') { 
@@ -65,18 +69,29 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
       }
       console.log('creating conditions', JSON.stringify(conditions[x]));
       try {
-        const encounter = await getEncounterForAppointment(parseInt(uuidObj.appointment_id.S), uuidObj.firm_id.S, uuidObj.access_token.S);
         await createDiagnosisFromCondition(
           conditions[x], 
           parseInt(encounter.id), 
           `https://${uuidObj.firm_id.S}.m2integrationtest.com`, 
           {gdpr: uuidObj.gdpr.S, jsessionid: uuidObj.jsessionid.S, csid: uuidObj.csid.S}, 
-          medications.length > 0
+          medications
         );
         //await createCondition(conditions[x], uuidObj.firm_id.S, uuidObj.access_token.S);
       } catch (e) {
         await postMessageToSlackChannel('Modmed 500 error for condition', {name: conditions[x].code});
       }
+    }
+    try {
+      await postMessageToSlackChannel('Creating CC_HPI', {CC_HPI: fileContents['Structured Notes']['CC_HPI']});
+      await addAdditionalComments(
+          fileContents['Structured Notes']['CC_HPI'], 
+          `https://${uuidObj.firm_id.S}.m2integrationtest.com`,
+          {gdpr: uuidObj.gdpr.S, jsessionid: uuidObj.jsessionid.S, csid: uuidObj.csid.S},
+          parseInt(encounter.id),
+          AdditionalComments.CC_HPI
+        );
+    } catch (e) {
+      await postMessageToSlackChannel(`Modmed 500 error for CC_HPI`, {message: e.message});
     }
     // If production, clear out assets after inserting into modmed
     if (process.env.PRODUCTION_MODE === 'true') {
