@@ -10,9 +10,9 @@ export const handler = async (event: APIGatewayProxyEvent) => {
       body: 'Bad Request, missing request body'
     }
   }
-  const {firm_id, patient_id } = JSON.parse(event.body);
+  const {auth, patient_id, appointment_id, firm_id } = JSON.parse(event.body);
   const authArray = event.headers?.authorization.split(' ');
-  if (!authArray[1] || !firm_id || !patient_id) {
+  if (!authArray[1] || !firm_id || !patient_id || !auth.sessionLogin.csid || !auth.sessionLogin.jsessionid) {
     return {
       statusCode: 400,
       body: 'Bad Request, missing params'
@@ -23,8 +23,18 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
     if (patient) {
       const uuid = randomUUID();
-      console.log({uuid, firm_id, access: authArray[1]});
-      await writeUuidToTable(uuid, firm_id, authArray[1], patient_id);
+      await writeUuidToTable(
+        uuid, 
+        firm_id, 
+        authArray[1], 
+        patient_id, 
+        appointment_id, 
+        {
+          csid: auth.sessionLogin.csid, 
+          jsessionid: auth.sessionLogin.jsessionid, 
+          gdpr: auth.sessionLogin.gdpr
+        }
+      );
       const url = await getSignedUrl(`recordings/${uuid}.m4a`);
       return {
         statusCode: 201,
