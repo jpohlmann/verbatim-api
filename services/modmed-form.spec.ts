@@ -1,7 +1,8 @@
 import { addAdditionalComments, AdditionalComments, addMedicationConsultation, createDiagnosisFromCondition, findDiagnosisByICDCode, getProcedureModal, getSuggestedProcedures, login, PRESCRIPTION_PLAN, sendDiagnosisRequest } from "./modmed-form";
-import { DiagnosisRequest } from "../types/modmed-ui";
+import { DiagnosisRequest, VisitProcedure } from "../types/modmed-ui";
 import {expect, test} from '@jest/globals';
 import { Condition } from "./condition";
+import { findCounselingMedicationInProcedureModal, mapDrugToMedicationConsultation } from "../helpers/modmed";
 /*
 test('Creates Visit Diagnosis', async () => {
     const username = 'dcane';
@@ -135,7 +136,7 @@ test('Gets suggested procedures', async () => {
   const suggestedProceduresResult = await getSuggestedProcedures(diagnosisId, providerUrl, loginCookies, visitId);
   expect(suggestedProceduresResult.suggestedProcedures.length).toBeGreaterThan(1);
 });
-*/
+
 
 test('Create Diagnosis from Condition', async () => {
   const condition = {"resourceType":"Condition","clinicalStatus":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/condition-clinical","code":"ACTIVE","display":"Active"}],"text":"Active"},"category":[{"coding":[{"system":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/ValueSet/condition-category","code":"CONDITION","display":"Condition"}],"text":"Condition"}],"code":{"coding":[{"system":"ICD10","code":"B36.0","display":"Tinea versicolor"}],"text":"Tinea versicolor"},"subject":{"reference":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340576","display":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340576"},"onsetDateTime":"2024-02-14T10:21:14+00:00","recordedDate":"2024-02-14T15:21:14+00:00"};
@@ -152,8 +153,87 @@ test('Create Diagnosis from Condition', async () => {
   expect(diagnosisResult.id).toBeTruthy();
   expect(diagnosisResult.procedures.length).toEqual(3);
 }, 20000);
+test('Finds Lichen diagnosis by ICD code ', async () => {
+  const username = 'dcane';
+  const password = 'Password1234';
+  const visitId = 298750;
+  const providerUrl = 'https://verbatimaisandbox.m2integrationtest.com';    
+  const loginCookies = await login(username, password, providerUrl);
+  expect(loginCookies.gdpr).toBeTruthy();
+  expect(loginCookies.csid).toBeTruthy();
+  expect(loginCookies.jsessionid).toBeTruthy();
+
+  const condition: Condition = {"resourceType":"Condition","clinicalStatus":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/condition-clinical","code":"ACTIVE","display":"Active"}],"text":"Active"},"category":[{"coding":[{"system":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/ValueSet/condition-category","code":"CONDITION","display":"Condition"}],"text":"Condition"}],"code":{"coding":[{"system":"ICD10","code":"L43.9","display":"Lichen Planus"}],"text":"Lichen Planus"},"subject":{"reference":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340953","display":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340953"},"onsetDateTime":"2024-02-14T10:21:14+00:00","recordedDate":"2024-02-14T15:21:14+00:00"};
+    const diagnosisResult = await findDiagnosisByICDCode(condition, visitId, providerUrl, loginCookies);
+    console.log(diagnosisResult);
+    expect(diagnosisResult.diagnosisName).toEqual("Lichen Planus");
+});
+
+test('Finds Acne diagnosis by ICD code ', async () => {
+  const username = 'dcane';
+  const password = 'Password1234';
+  const visitId = 298750;
+  const providerUrl = 'https://verbatimaisandbox.m2integrationtest.com';    
+  const loginCookies = await login(username, password, providerUrl);
+  expect(loginCookies.gdpr).toBeTruthy();
+  expect(loginCookies.csid).toBeTruthy();
+  expect(loginCookies.jsessionid).toBeTruthy();
+
+  const condition: Condition = {"resourceType":"Condition","clinicalStatus":{"coding":[{"system":"http://hl7.org/fhir/ValueSet/condition-clinical","code":"ACTIVE","display":"Active"}],"text":"Active"},"category":[{"coding":[{"system":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/ValueSet/condition-category","code":"CONDITION","display":"Condition"}],"text":"Condition"}],"code":{"coding":[{"system":"ICD10","code":"L70.9","display":"Unspecified acne"}],"text":"Unspecified acne"},"subject":{"reference":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340953","display":"https://stage.ema-api.com/ema-dev/firm/verbatimaisandbox/ema/fhir/v2/Patient/340953"},"onsetDateTime":"2024-02-14T10:21:14+00:00","recordedDate":"2024-02-14T15:21:14+00:00"};
+    const diagnosisResult = await findDiagnosisByICDCode(condition, visitId, providerUrl, loginCookies);
+    console.log(diagnosisResult);
+    expect(diagnosisResult.diagnosisName).toEqual("Acne");
+});
+*/
+
+test('Creates correct rx counseling clobetanol', async () => {
+  const username = 'dcane';
+  const password = 'Password1234';
+  const visitId = 301506;
+  const veVisitDiagnosisProcedureId = 1593;
+  const providerUrl = 'https://verbatimaisandbox.m2integrationtest.com';    
+  const loginCookies = await login(username, password, providerUrl);
+  expect(loginCookies.gdpr).toBeTruthy();
+  expect(loginCookies.csid).toBeTruthy();
+  expect(loginCookies.jsessionid).toBeTruthy();
+  const counselingMedication = addMedicationConsultation(providerUrl, loginCookies, visitId, veVisitDiagnosisProcedureId, 'Ketoconazole');
+  expect(counselingMedication).toBeTruthy();
+}, 20000);
 
 /*
+
+test('Finds correct rx counseling clobetanol', async () => {
+  const username = 'dcane';
+  const password = 'Password1234';
+  const visitId = 301506;
+  const veVisitDiagnosisProcedureId = 1593;
+  const providerUrl = 'https://verbatimaisandbox.m2integrationtest.com';    
+  const loginCookies = await login(username, password, providerUrl);
+  expect(loginCookies.gdpr).toBeTruthy();
+  expect(loginCookies.csid).toBeTruthy();
+  expect(loginCookies.jsessionid).toBeTruthy();
+  const procedureModalResult = await getProcedureModal(providerUrl, loginCookies, visitId, veVisitDiagnosisProcedureId);
+  const counselingMedication = findCounselingMedicationInProcedureModal(mapDrugToMedicationConsultation('Clobetasol Propionate'), procedureModalResult, veVisitDiagnosisProcedureId);
+  expect(counselingMedication).toBeTruthy();
+  expect((counselingMedication as VisitProcedure).veVisitProcedureMetadataResponse[0].veVisitProcedureMetadataOptionResponses[0].textareaValue).toContain('Topical Steroids Counseling');
+}, 20000);
+
+test('Finds correct rx counseling ', async () => {
+  const username = 'dcane';
+  const password = 'Password1234';
+  const visitId = 301506;
+  const veVisitDiagnosisProcedureId = 1593;
+  const providerUrl = 'https://verbatimaisandbox.m2integrationtest.com';    
+  const loginCookies = await login(username, password, providerUrl);
+  expect(loginCookies.gdpr).toBeTruthy();
+  expect(loginCookies.csid).toBeTruthy();
+  expect(loginCookies.jsessionid).toBeTruthy();
+  const procedureModalResult = await getProcedureModal(providerUrl, loginCookies, visitId, veVisitDiagnosisProcedureId);
+  const counselingMedication = findCounselingMedicationInProcedureModal(mapDrugToMedicationConsultation('Tretinoin'), procedureModalResult, veVisitDiagnosisProcedureId);
+  expect(counselingMedication).toBeTruthy();
+  expect((counselingMedication as VisitProcedure).veVisitProcedureMetadataResponse[0].veVisitProcedureMetadataOptionResponses[0].textareaValue).toContain('Retinoid Counseling');
+}, 20000);
+
 test('Creates diagnosis from found value', async () => {
   const username = 'dcane';
   const password = 'Password1234';
