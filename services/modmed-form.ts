@@ -3,8 +3,11 @@ import axios from 'axios';
 import { Condition } from './condition';
 import Fuse from 'fuse.js';
 import qs from 'qs';
-import { findCounselingMedicationInProcedureModal, getCounselingProcedure, getMedicationCounselingProcedure } from '../helpers/modmed';
+import { findCounselingMedicationInProcedureModal, getCounselingProcedure, getMedicationCounselingProcedure, mapDrugToMedicationConsultation } from '../helpers/modmed';
 import { MedicationStatement } from './medication';
+
+// These are words attached to the condition that may not be in the UI.
+const EXTRANEOUS_CONDITION_WORDS = ['Unspecified'];
 
 export const PRESCRIPTION_PLAN = {
   "name": "Prescription Medication Management",
@@ -156,39 +159,54 @@ export const sendDiagnosisRequest = async (providerUrl: string, authCookies: Aut
  * @param authCookies 
  */
 export const findDiagnosisByICDCode = async (condition: Condition, visitId: number, providerUrl: string, authCookies: AuthCookies): Promise<Diagnosis> => {
+  let conditionText = condition.code.text;
+
+  // Remove extraneous words from the condition
+  EXTRANEOUS_CONDITION_WORDS.forEach(word => conditionText = conditionText.replace(word, ''));
+  conditionText = conditionText.trim();
+  const headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json',
+    'Origin': providerUrl,
+    'Pragma': 'no-cache',
+    'Referer': `${providerUrl}/ema/web/practice/staff`,
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"',
+    'Cookie': `CSID=${authCookies.csid}; JSESSIONID=${authCookies.jsessionid}; gdpr=${authCookies.gdpr}`
+  };
   try {
-    const response = await axios({
+    let response = await axios({
         method: 'get',
         url: `${providerUrl}/ema/ws/v3/diagnosis/ema/dx?selector=id,diagnosisLabel,diagnosisName,icd10Match,icd9,icd10,problemAddressedDisplay,requiresBodyLocation,switchDiagramChild,switchDiagramFemale,switchDiagramMale&visitId=${visitId}&searchTerm=${condition.code.coding[0].code.trim()}&paging.pageNumber=1&paging.pageSize=50`,
-        headers: {
-          'Accept': 'application/json, text/plain, */*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Content-Type': 'application/json',
-          'Origin': providerUrl,
-          'Pragma': 'no-cache',
-          'Referer': `${providerUrl}/ema/web/practice/staff`,
-          'Sec-Fetch-Dest': 'empty',
-          'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'same-origin',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-          'sec-ch-ua': '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
-          'sec-ch-ua-mobile': '?0',
-          'sec-ch-ua-platform': '"macOS"',
-          'Cookie': `CSID=${authCookies.csid}; JSESSIONID=${authCookies.jsessionid}; gdpr=${authCookies.gdpr}`
-        }
+        headers
       });
       if (!response.data.length) {
-        return null;
+        // Fall back to text search
+        response = await axios({
+          method: 'get',
+          url: `${providerUrl}/ema/ws/v3/diagnosis/ema/dx?selector=id,diagnosisLabel,diagnosisName,icd10Match,icd9,icd10,problemAddressedDisplay,requiresBodyLocation,switchDiagramChild,switchDiagramFemale,switchDiagramMale&visitId=${visitId}&searchTerm=${conditionText}&paging.pageNumber=1&paging.pageSize=50`,
+          headers
+        });
+        // If we still didn't find anything, nothing we can do
+        if (!response.data.length) {
+          return null;
+        }
       }
-      const fuse = new Fuse(response.data as Diagnosis[], { keys: ['diagnosisName', 'diagnosisLabel'] });
-      const results = fuse.search(condition.code.text);
+      const fuse = new Fuse(response.data, { keys: ['diagnosisName'], threshold: 0.3 });
+      const results = fuse.search(conditionText);
       if (results.length == 0) {
         // If we didn't get a good match, just pick the first
         return response.data[0];
       }
-      return results[0].item;
+      return results[0].item as Diagnosis;
 } catch (error) {
     console.error('Error making request:', error);
 }
@@ -334,7 +352,7 @@ export const getProcedureModal = async (providerUrl: string, authCookies: AuthCo
 export const addMedicationConsultation = async (providerUrl: string, authCookies: AuthCookies, visitId: number, visitDiagnosisProcedureId: number, drugName: string): Promise<ProcedureAddResponse|boolean> => {
   try {
     const procedureModalResult = await getProcedureModal(providerUrl, authCookies, visitId, visitDiagnosisProcedureId);
-    const counselingMedication = findCounselingMedicationInProcedureModal(drugName, procedureModalResult, visitDiagnosisProcedureId);
+    const counselingMedication = findCounselingMedicationInProcedureModal(mapDrugToMedicationConsultation(drugName), procedureModalResult, visitDiagnosisProcedureId);
     if (!counselingMedication) {
       console.log(`Medication ${drugName} not found`);
       return false;

@@ -3,8 +3,9 @@ import * as env from 'env-var';
 import { Condition } from '../services/condition';
 import { MedicationStatement } from '../services/medication';
 import { ROUTES_OF_ADMINISTRATION } from './constants/route-of-administration';
+import { MAPPED_DRUGS } from './constants/medication-consultation';
 import Fuse from 'fuse.js';
-import { FollowUpData, ProcedureData, ProcedureModalResponse, VisitProcedure } from '../types/modmed-ui';
+import { FollowUpData, ProcedureData, ProcedureModalResponse, VisitProcedure, VisitProcedureMetadataOption } from '../types/modmed-ui';
 
 export type StructuredNotes = {
     "Diagnosis": string;
@@ -159,20 +160,20 @@ export const findCounselingMedicationInProcedureModal = (
   visitDiagnosisResponse: ProcedureModalResponse,
   procedureNoteId: number
 ): VisitProcedure|boolean => {
-  for (const option of visitDiagnosisResponse.veProcedureFacade.metadata) {
-    if (option.type !== 'cbtextarea') {
-      continue;
-    }
-    const fuse = new Fuse(option.options, {includeScore: true, threshold: 0.4, keys: ['optionValue']});
+  const cbtextareas = visitDiagnosisResponse.veProcedureFacade.metadata
+    .filter(metadata => metadata.type == 'cbtextarea');
+    for (const metadata of cbtextareas) {
+
+    const fuse = new Fuse(metadata.options as VisitProcedureMetadataOption[], {includeScore: true, threshold: 0.4, keys: ['optionValue']});
     const results = fuse.search(medicationName);
     if (results.length > 0) {
       const visitProcedure: VisitProcedure = {
         id: procedureNoteId,
         veVisitProcedureMetadataResponse: [
           {
-            id: option.veVisitProcedureMetadataResponseId,
+            id: metadata.veVisitProcedureMetadataResponseId,
             veProcedureMetadata: {
-              id: option.id
+              id: metadata.id
             },
             veVisitProcedureMetadataOptionResponses: [
               {
@@ -186,6 +187,7 @@ export const findCounselingMedicationInProcedureModal = (
         ],
         visitProcedureAlerts: []
       };
+      console.log('Found visit procedure', JSON.stringify(visitProcedure));
       return visitProcedure;
     }
   }
@@ -216,4 +218,11 @@ export const getMedicationCounselingProcedure = (followupData: FollowUpData): Pr
     },
     procedureBodyLocations: []
   };
+}
+
+export const mapDrugToMedicationConsultation = (drugName: string): string => {
+  if (MAPPED_DRUGS[drugName.toLowerCase()]) {
+    return MAPPED_DRUGS[drugName.toLowerCase()];
+  }
+  return drugName;
 }
