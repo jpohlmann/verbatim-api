@@ -2,10 +2,8 @@ import { S3ObjectCreatedNotificationEvent, S3Handler } from 'aws-lambda';
 import { S3 } from 'aws-sdk';
 import { extractUUID, getConditionFromStructuredNotes, getMedicationFromStructuredNotes, StructuredNotes } from '../helpers/modmed';
 import { deleteAssets } from '../services/aws';
-import { createCondition } from '../services/condition';
 import { deleteDataByUuid, getDataByUuid } from '../services/dynamo';
 import { getEncounterForAppointment } from '../services/encounter';
-import { createMedication } from '../services/medication';
 import { addAdditionalComments, AdditionalComments, createDiagnosisFromCondition } from '../services/modmed-form';
 import { postMessageToSlackChannel } from '../services/slack';
 
@@ -38,29 +36,16 @@ export const handler = async (event: S3ObjectCreatedNotificationEvent, context):
     console.log('Transcribed File Data', JSON.stringify(fileContents));
     await postMessageToSlackChannel('Transcribed File Data', fileContents);
     const medications = getMedicationFromStructuredNotes(
-        fileContents['Structured Notes'], 
+        fileContents, 
         uuidObj.firm_id.S, 
         parseInt(uuidObj.patient_id.S)
     );
     const conditions = getConditionFromStructuredNotes(
-        fileContents['Structured Notes'], 
+        fileContents, 
         uuidObj.firm_id.S, 
         parseInt(uuidObj.patient_id.S)
     );
-    // Skipping Medications for now, not helpful unless we can tie to the visit.
-    /*
-    for (let x = 0; x < medications.length; x++) {
-      if (process.env.PRODUCTION_MODE !== 'true') {
-        await postMessageToSlackChannel('Medication to Create', medications[x]);
-      }
-      console.log('creating medication', JSON.stringify(medications[x]));
-      try {
-        await createMedication(medications[x], uuidObj.firm_id.S, uuidObj.access_token.S);
-      } catch (e) {
-        await postMessageToSlackChannel('Modmed 500 error for medication', {name: medications[x].medicationCodeableConcept.text});
-      }
-    }
-    */
+
     const encounter = await getEncounterForAppointment(parseInt(uuidObj.appointment_id.S), uuidObj.firm_id.S, uuidObj.access_token.S);
     for (let x = 0; x < conditions.length; x++) {
       

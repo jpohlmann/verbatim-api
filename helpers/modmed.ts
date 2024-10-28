@@ -8,27 +8,36 @@ import Fuse from 'fuse.js';
 import { FollowUpData, ProcedureData, ProcedureModalResponse, VisitProcedure, VisitProcedureMetadataOption } from '../types/modmed-ui';
 
 export type StructuredNotes = {
-    "Diagnosis": string;
-    "ICD Code": string;
+  "Structured Notes": {
+    "Patient Info": {
+      "CC_HPI": string;
+    };
+    "Diagnoses": Array<{
+      "Diagnosis": string;
+      "ICD10_Code": string;
+    }>;
     "Onset": string;
     "Timing": string;
-    "Locations Affected": string;
-    "Worsening Factors": string;
-    "Alleviating Factors": string;
-    "Associated Symptoms": string;
-    "Previous Treatments Tried": string;
-    "Current Treatments": string;
-    "New Rx Generation": RxGeneration[];
+    "Symptoms": {
+      "Locations Affected": string[];
+      "Worsening Factors": string[];
+      "Alleviating Factors": string[];
+      "Associated Symptoms": string[];
+    };
+    "Treatments": {
+      "Previous Treatments": string[];
+      "Current Treatments": string[];
+    };
+    "New Medications": Array<{
+      "Medication Name": string;
+      "Dosage": string;
+      "Application Instructions": string;
+      "Route of Administration Code": string;
+      "RxNorm Code": string;
+    }>;
     "Follow-up": string;
-    "CC_HPI": string;
   };
-  
-export type RxGeneration = {
-    "Medication Name": string;
-    "Dosage": string;
-    "RxNorm Code": string;
-    "Route of Administration Code": string;
-  };
+};
 
 export const buildModMedRequest = (
     endpoint: string, 
@@ -48,12 +57,11 @@ export const buildModMedRequest = (
 };
 
 export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: string, patientId: number): Array<Condition> => {
-    if (!notes['ICD Code']) {
-        return [];
+    if (!notes['Structured Notes']['Diagnoses']) {
+      return [];
     }
-    const icdCodeArray = notes['ICD Code'].split(',');
-    const diagnosisArray = notes['Diagnosis'].split(',');
-    return icdCodeArray.map((code, index) => { return {
+  notes['Structured Notes']['Diagnoses']
+  .map((diagnosis) => { return {
         "resourceType": "Condition",
         "clinicalStatus": {
           "coding": [
@@ -81,11 +89,11 @@ export const getConditionFromStructuredNotes = (notes: StructuredNotes, firmId: 
           "coding": [
             {
               "system": "ICD10",
-              "code": code,
-              "display": diagnosisArray[index]
+              "code": diagnosis['ICD10_Code'],
+              "display": diagnosis['Diagnosis']
             }
           ],
-          "text": diagnosisArray[index]
+          "text": diagnosis['Diagnosis']
         },
         "subject": {
           "reference": `https://${env.get('DOMAIN_URL').asString()}/ema-dev/firm/${firmId}/ema/fhir/v2/Patient/${patientId}`,
@@ -101,7 +109,7 @@ export const getMedicationFromStructuredNotes = (notes: StructuredNotes, firmId:
         return [];
     }
     const medicationStatements: Array<MedicationStatement> = [];
-    notes['New Rx Generation'].forEach(prescription => {
+    notes['Structured Notes']['New Medications'].forEach(prescription => {
         if (prescription['RxNorm Code'] == 'Not found') {
           console.log('Medication not found: ' + prescription['Medication Name']);
           return;
